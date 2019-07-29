@@ -1,5 +1,21 @@
 #include "Algorithm.h"
 
+// æ·»å……ç©ºæ´ï¼Œæ³¨æ„èƒŒæ™¯æ˜¯é»‘è‰²ï¼Œå‰æ™¯æ˜¯ç™½è‰²ï¼ŒäºŒå€¼åŒ–å›¾åƒ
+// è°ƒç”¨æ–¹æ³• fillHole(src,dst);
+void fillHole(const Mat srcBw, Mat &dstBw)
+{
+    Size m_Size = srcBw.size();
+    Mat Temp=Mat::zeros(m_Size.height+2,m_Size.width+2,srcBw.type());//å»¶å±•å›¾åƒ
+    srcBw.copyTo(Temp(Range(1, m_Size.height + 1), Range(1, m_Size.width + 1)));
+ 
+    cv::floodFill(Temp, Point(0, 0), Scalar(255));
+ 
+    Mat cutImg;//è£å‰ªå»¶å±•çš„å›¾åƒ
+    Temp(Range(1, m_Size.height + 1), Range(1, m_Size.width + 1)).copyTo(cutImg);
+ 
+    dstBw = srcBw | (~cutImg);
+}
+
 // get pixel by mouse selection
 Mat imgsw;
 void GetLocPixel(Mat img)
@@ -798,7 +814,7 @@ void FMTmatchDemo()
 		getchar();
 		return;
 	}
-	// ÓĞ¸öÆæ¹ÖµÄÏÖÏó£¬dftµÚÒ»´ÎÊ¹ÓÃÊ±¼ä½Ï³¤£¬ÔÙ´ÎÊ¹ÓÃÊ±¼äËõ¶Ì£¬¶øÇÒ²î±ğºÜ´ó
+	// æœ‰ä¸ªå¥‡æ€ªçš„ç°è±¡ï¼Œdftç¬¬ä¸€æ¬¡ä½¿ç”¨æ—¶é—´è¾ƒé•¿ï¼Œå†æ¬¡ä½¿ç”¨æ—¶é—´ç¼©çŸ­ï¼Œè€Œä¸”å·®åˆ«å¾ˆå¤§
 	fft2(Mat(),0);
 	double tstart = getTickCount();
 	double scale = 0, thet = 0;
@@ -940,11 +956,11 @@ void FMTmatchDemo()
 cv::Mat FastHazeRemoval(const Mat& src, float rho1, int windowssize /*= 101*/ )
 {
 	Mat Img_Src = src.clone();
-	Mat Img_Process = SpitMinChn(Img_Src);  // ·ÖÀë³ö×îĞ¡Í¨µÀ£¬6ms
+	Mat Img_Process = SpitMinChn(Img_Src);  // åˆ†ç¦»å‡ºæœ€å°é€šé“ï¼Œ6ms
 
 //	double tStart = cv::getTickCount();
 
-	// ¾ùÖµÂË²¨ -- ºÄÊ±½Ï³¤£¬3ms
+	// å‡å€¼æ»¤æ³¢ -- è€—æ—¶è¾ƒé•¿ï¼Œ3ms
 	Size sz(windowssize,windowssize);
 	Mat AvgMinChn;
 //	Mat kenerl(sz, CV_32F, Scalar(1));
@@ -956,9 +972,9 @@ cv::Mat FastHazeRemoval(const Mat& src, float rho1, int windowssize /*= 101*/ )
 
 //	cout << (getTickCount() - tStart)*1000/getTickFrequency() << "msl" << endl;
 
-	// ÇóËùÓĞÔªËØ¾ùÖµ--²»ĞèÒªÓÅ»¯£¬msÒÔÏÂ
+	// æ±‚æ‰€æœ‰å…ƒç´ å‡å€¼--ä¸éœ€è¦ä¼˜åŒ–ï¼Œmsä»¥ä¸‹
 	Scalar Avg = mean(Img_Process)/255;
-	// Çó
+	// æ±‚
 	float rho = rho1*Avg(0);
 	float Scale = rho < 0.9?rho:0.9;
 	Mat AvgMinChn1 = Scale * AvgMinChn;
@@ -994,7 +1010,7 @@ cv::Mat SpitMinChn(const Mat& src )
 	CV_Assert(!src.empty() && src.depth() == CV_8U && src.isContinuous());
 	if (src.channels() == 1)
 	{
-		return src;  // µ¥Í¨µÀÖ±½Ó·µ»Ø£¬Ğ§¹ûÓĞ´ı²âÊÔ
+		return src;  // å•é€šé“ç›´æ¥è¿”å›ï¼Œæ•ˆæœæœ‰å¾…æµ‹è¯•
 	}
 	Mat img(src.size(),CV_8UC1);
 	/**/
@@ -1670,7 +1686,7 @@ void FindDropFall1Path(const Mat &src, const Point &beg, vector<Point> &OnePath)
 				}
 			}
 		}
-		// ¸ù¾İsigma ¼ÆËãwi
+		// æ ¹æ®sigma è®¡ç®—wi
 		wi = (Sigma == 15 || Sigma == 0)? 4 : Max;
 		// decide next point according to wi
 		cv::Point tPoint;
@@ -1812,7 +1828,7 @@ void HuMomentsTest()
 void HoughCirclesTest()
 {
 	/************************************************************************/
-	/*    houghcircles test    opencv»ô·òÔ²¼ì²â                             */
+	/*    houghcircles test    opencvéœå¤«åœ†æ£€æµ‹                             */
 	/************************************************************************/
 	// 	Mat src_gray = imread("E:/desktop/samples/1001.bmp",0);
 	// 	Mat src;
@@ -2321,15 +2337,15 @@ long StatFeatureInfo(uchar *image, int Height, int Width, int type, bool backfil
 	runCnt = ExtractRunlength(image, pixelCount, runlength);
 	FEATURES *Features = new FEATURES[runCnt];
 
-	long  n=0, l=1, j=0;                       //l:±êºÅ´Ó1¿ªÊ¼£¬ÒÔÃâ0Óë±³¾°É«0ÖØ¸´
+	long  n=0, l=1, j=0;                       //l:æ ‡å·ä»1å¼€å§‹ï¼Œä»¥å…0ä¸èƒŒæ™¯è‰²0é‡å¤
 	//
 	for(n=0; n<runCnt; n++)
 	{
 
-		while(runlength[j].E < runlength[n].S-N-1)   //µÚÒ»¸öv>=s-NµÄj
+		while(runlength[j].E < runlength[n].S-N-1)   //ç¬¬ä¸€ä¸ªv>=s-Nçš„j
 			j++;
 
-		if (runlength[j].E <= runlength[n].E-N)//if(E[j] <= E[n]-N)       //rjÔÚrnÖ®Ç°½áÊø
+		if (runlength[j].E <= runlength[n].E-N)//if(E[j] <= E[n]-N)       //rjåœ¨rnä¹‹å‰ç»“æŸ
 		{
 			Add2Features(Features[runlength[j].rIndex], runlength[n], N, type);
 			runlength[n].rIndex = runlength[j].rIndex;
@@ -2369,7 +2385,7 @@ long StatFeatureInfo(uchar *image, int Height, int Width, int type, bool backfil
 
 	long cComponentCount = 0;
 	long k, c0, x;
-	for(k=1; k<l; ++k)             //¸üĞÂËùÓĞµÈ¼Û·ÖÖ§µÄ±êºÅ
+	for(k=1; k<l; ++k)             //æ›´æ–°æ‰€æœ‰ç­‰ä»·åˆ†æ”¯çš„æ ‡å·
 	{
 		if(Features[k].label != k)
 			Features[k].label = Features[findRootIndex(Features, Features[k].label)].label;
@@ -2387,8 +2403,8 @@ long StatFeatureInfo(uchar *image, int Height, int Width, int type, bool backfil
 // 			cout << Features[i].right - Features[i].left+1 << endl;
 // 		}
 // 	}
-	//²»»ØÌîÊ±£¬label´æ·ÅµÄ¾ÍÊÇ¸÷Á¬Í¨·ÖÖ§µÄ±êºÅ
-	//»ØÌîµ½Í¼Ïñ£¬Ê¹Ã¿¸öÏñËØµÃµ½Æä±êºÅÖµ
+	//ä¸å›å¡«æ—¶ï¼Œlabelå­˜æ”¾çš„å°±æ˜¯å„è¿é€šåˆ†æ”¯çš„æ ‡å·
+	//å›å¡«åˆ°å›¾åƒï¼Œä½¿æ¯ä¸ªåƒç´ å¾—åˆ°å…¶æ ‡å·å€¼
 //	long runCount = n;
 	if(backfill)
 	{
@@ -2401,7 +2417,7 @@ long StatFeatureInfo(uchar *image, int Height, int Width, int type, bool backfil
 	}
 	delete[] runlength;
 	delete[] Features;
-	return cComponentCount;   //·µ»ØÁ¬Í¨Óò¸öÊı
+	return cComponentCount;   //è¿”å›è¿é€šåŸŸä¸ªæ•°
 }
 
 long StatFeatureInfo(InputOutputArray _src, vector<FEATURES> &Features, int type, bool backfill/* = true*/)
@@ -2419,15 +2435,15 @@ long StatFeatureInfo(InputOutputArray _src, vector<FEATURES> &Features, int type
 	InitFeature(feature);
 	Features.push_back(feature);
 
-	long  n=0, l=1, j=0;                       //l:±êºÅ´Ó1¿ªÊ¼£¬ÒÔÃâ0Óë±³¾°É«0ÖØ¸´
+	long  n=0, l=1, j=0;                       //l:æ ‡å·ä»1å¼€å§‹ï¼Œä»¥å…0ä¸èƒŒæ™¯è‰²0é‡å¤
 	//
 	for(n=0; n<runCnt; n++)
 	{
 
-		while(runlength[j].E < runlength[n].S-N-1)   //µÚÒ»¸öv>=s-NµÄj
+		while(runlength[j].E < runlength[n].S-N-1)   //ç¬¬ä¸€ä¸ªv>=s-Nçš„j
 			j++;
 
-		if (runlength[j].E <= runlength[n].E-N)//if(E[j] <= E[n]-N)       //rjÔÚrnÖ®Ç°½áÊø
+		if (runlength[j].E <= runlength[n].E-N)//if(E[j] <= E[n]-N)       //rjåœ¨rnä¹‹å‰ç»“æŸ
 		{
 			Add2Features(Features[runlength[j].rIndex], runlength[n], N, type);
 			runlength[n].rIndex = runlength[j].rIndex;
@@ -2468,7 +2484,7 @@ long StatFeatureInfo(InputOutputArray _src, vector<FEATURES> &Features, int type
 
 	long cComponentCount = 0;
 	long k, c0, x;
-	for(k=1; k<l; ++k)             //¸üĞÂËùÓĞµÈ¼Û·ÖÖ§µÄ±êºÅ
+	for(k=1; k<l; ++k)             //æ›´æ–°æ‰€æœ‰ç­‰ä»·åˆ†æ”¯çš„æ ‡å·
 	{
 		if(Features[k].label == k)
 			++cComponentCount;
@@ -2488,8 +2504,8 @@ long StatFeatureInfo(InputOutputArray _src, vector<FEATURES> &Features, int type
 // 				cout << Features[i].bottom - Features[i].top+1 << endl;
 // 	 		}
 // 	 	}
-	//²»»ØÌîÊ±£¬label´æ·ÅµÄ¾ÍÊÇ¸÷Á¬Í¨·ÖÖ§µÄ±êºÅ
-	//»ØÌîµ½Í¼Ïñ£¬Ê¹Ã¿¸öÏñËØµÃµ½Æä±êºÅÖµ
+	//ä¸å›å¡«æ—¶ï¼Œlabelå­˜æ”¾çš„å°±æ˜¯å„è¿é€šåˆ†æ”¯çš„æ ‡å·
+	//å›å¡«åˆ°å›¾åƒï¼Œä½¿æ¯ä¸ªåƒç´ å¾—åˆ°å…¶æ ‡å·å€¼
 	//	long runCount = n;
 	if(backfill)
 	{
@@ -2501,7 +2517,7 @@ long StatFeatureInfo(InputOutputArray _src, vector<FEATURES> &Features, int type
 				image[x] = c0;
 		}
 	}
-	return cComponentCount;   //·µ»ØÁ¬Í¨Óò¸öÊı
+	return cComponentCount;   //è¿”å›è¿é€šåŸŸä¸ªæ•°
 }
 
 void StatFeatureInfoDemo()
@@ -2531,7 +2547,7 @@ void StatFeatureInfoDemo()
 //---------------------------------------------------------------------------
 long  findRootIndex(long* labels, long position)
 {
-	//µİ¹é°æ±¾
+	//é€’å½’ç‰ˆæœ¬
 	if(labels[position] != position)
 	{
 		labels[position] = findRootIndex(labels, labels[position]);
@@ -2542,7 +2558,7 @@ long  findRootIndex(long* labels, long position)
 
 long findRootIndex(vector<long> &labels, long position)
 {
-	//µİ¹é°æ±¾
+	//é€’å½’ç‰ˆæœ¬
 	if(labels[position] != position)
 	{
 		labels[position] = findRootIndex(labels, labels[position]);
@@ -2553,7 +2569,7 @@ long findRootIndex(vector<long> &labels, long position)
 
 long findRootIndex(FEATURES* labels, long position)
 {
-	//µİ¹é°æ±¾
+	//é€’å½’ç‰ˆæœ¬
 	if(labels[position].label != position)
 	{
 		labels[position].label = findRootIndex(labels, labels[position].label);
@@ -2564,7 +2580,7 @@ long findRootIndex(FEATURES* labels, long position)
 
 long findRootIndex(vector<FEATURES> &labels, long position)
 {
-	//µİ¹é°æ±¾
+	//é€’å½’ç‰ˆæœ¬
 	if(labels[position].label != position)
 	{
 		labels[position].label = findRootIndex(labels, labels[position].label);
@@ -2632,14 +2648,14 @@ long  CCLabeling(unsigned char image[], long width, long height, bool backfill)
 	long pixelCount = M * N;
 	long runSize = M/2 * N+1;
 
-	//ÕâĞ©ÄÚ´æÒ²¿ÉÒÔÊ¹ÓÃvector
-	long* label = new long[runSize];           //±êºÅ¼¯
-	long* S = new long[runSize];               //ÓÎ³ÌÆğµã¼¯
-	long* E = new long[runSize];               //ÓÎ³ÌÖÕµã¼¯
-	long* index = new long[runSize];           //ÓÎ³ÌËùÊô²¿·ÖÁ¬Í¨ÓòË÷Òı
+	//è¿™äº›å†…å­˜ä¹Ÿå¯ä»¥ä½¿ç”¨vector
+	long* label = new long[runSize];           //æ ‡å·é›†
+	long* S = new long[runSize];               //æ¸¸ç¨‹èµ·ç‚¹é›†
+	long* E = new long[runSize];               //æ¸¸ç¨‹ç»ˆç‚¹é›†
+	long* index = new long[runSize];           //æ¸¸ç¨‹æ‰€å±éƒ¨åˆ†è¿é€šåŸŸç´¢å¼•
 
 	long i, t;
-	long  n=0, l=1, j=0;                       //l:±êºÅ´Ó1¿ªÊ¼£¬ÒÔÃâ0Óë±³¾°É«0ÖØ¸´
+	long  n=0, l=1, j=0;                       //l:æ ‡å·ä»1å¼€å§‹ï¼Œä»¥å…0ä¸èƒŒæ™¯è‰²0é‡å¤
 	//
 	for(i=0; i<pixelCount; i++)
 	{
@@ -2651,10 +2667,10 @@ long  CCLabeling(unsigned char image[], long width, long height, bool backfill)
 				i++;
 			E[n] = i-1;
 
-			while(E[j] < S[n]-N-1)   //µÚÒ»¸öv>=s-NµÄj
+			while(E[j] < S[n]-N-1)   //ç¬¬ä¸€ä¸ªv>=s-Nçš„j
 				j++;
 
-			if(E[j] <= E[n]-N)       //rjÔÚrnÖ®Ç°½áÊø
+			if(E[j] <= E[n]-N)       //rjåœ¨rnä¹‹å‰ç»“æŸ
 			{
 				index[n] = index[j];
 				t=j;
@@ -2685,7 +2701,7 @@ long  CCLabeling(unsigned char image[], long width, long height, bool backfill)
 
 	long cComponentCount = 0;
 	long k, c0, x;
-	for(k=1; k<l; ++k)             //¸üĞÂËùÓĞµÈ¼Û·ÖÖ§µÄ±êºÅ
+	for(k=1; k<l; ++k)             //æ›´æ–°æ‰€æœ‰ç­‰ä»·åˆ†æ”¯çš„æ ‡å·
 	{
 		if(label[k] != k)
 			label[k] = label[findRootIndex(label, label[k])];
@@ -2693,8 +2709,8 @@ long  CCLabeling(unsigned char image[], long width, long height, bool backfill)
 			++cComponentCount;
 	}
 
-	//²»»ØÌîÊ±£¬label´æ·ÅµÄ¾ÍÊÇ¸÷Á¬Í¨·ÖÖ§µÄ±êºÅ
-	//»ØÌîµ½Í¼Ïñ£¬Ê¹Ã¿¸öÏñËØµÃµ½Æä±êºÅÖµ
+	//ä¸å›å¡«æ—¶ï¼Œlabelå­˜æ”¾çš„å°±æ˜¯å„è¿é€šåˆ†æ”¯çš„æ ‡å·
+	//å›å¡«åˆ°å›¾åƒï¼Œä½¿æ¯ä¸ªåƒç´ å¾—åˆ°å…¶æ ‡å·å€¼
 	long runCount = n;
 	if(backfill)
 	{
@@ -2711,7 +2727,7 @@ long  CCLabeling(unsigned char image[], long width, long height, bool backfill)
 	delete[] S;
 	delete[] E;
 
-	return cComponentCount;   //·µ»ØÁ¬Í¨Óò¸öÊı
+	return cComponentCount;   //è¿”å›è¿é€šåŸŸä¸ªæ•°
 }
 
 void CCLabeling(Mat &image, vector<long> &rStart, vector<long> &rEnd, vector<long> &label, vector<long> &index, long &cComponentCount, bool backfill)
@@ -2722,7 +2738,7 @@ void CCLabeling(Mat &image, vector<long> &rStart, vector<long> &rEnd, vector<lon
 	long runSize = M/2 * N+1;
 
 	long i, t;
-	long  n=0, l=1, j=0;                       //l:±êºÅ´Ó1¿ªÊ¼£¬ÒÔÃâ0Óë±³¾°É«0ÖØ¸´
+	long  n=0, l=1, j=0;                       //l:æ ‡å·ä»1å¼€å§‹ï¼Œä»¥å…0ä¸èƒŒæ™¯è‰²0é‡å¤
 	label.push_back(0);
 	//
 	uchar *imageptr = image.ptr<uchar>(0);
@@ -2736,10 +2752,10 @@ void CCLabeling(Mat &image, vector<long> &rStart, vector<long> &rEnd, vector<lon
 				i++;
 			rEnd.push_back(i-1);//E[n] = i-1;
 
-			while(rEnd[j] < rStart[n]-N-1)//while(E[j] < S[n]-N-1)   //µÚÒ»¸öv>=s-NµÄj
+			while(rEnd[j] < rStart[n]-N-1)//while(E[j] < S[n]-N-1)   //ç¬¬ä¸€ä¸ªv>=s-Nçš„j
 				j++;
 
-			if(rEnd[j] <= rEnd[n]-N)//if(E[j] <= E[n]-N)       //rjÔÚrnÖ®Ç°½áÊø
+			if(rEnd[j] <= rEnd[n]-N)//if(E[j] <= E[n]-N)       //rjåœ¨rnä¹‹å‰ç»“æŸ
 			{
 				index.push_back(index[j]);//index[n] = index[j];
 				t=j;
@@ -2770,7 +2786,7 @@ void CCLabeling(Mat &image, vector<long> &rStart, vector<long> &rEnd, vector<lon
 
 	cComponentCount = 0;
 	long k, c0, x;
-	for(k=1; k<l; ++k)             //¸üĞÂËùÓĞµÈ¼Û·ÖÖ§µÄ±êºÅ
+	for(k=1; k<l; ++k)             //æ›´æ–°æ‰€æœ‰ç­‰ä»·åˆ†æ”¯çš„æ ‡å·
 	{
 		if(label[k] != k)
 			label[k] = label[findRootIndex(label, label[k])];
@@ -2778,8 +2794,8 @@ void CCLabeling(Mat &image, vector<long> &rStart, vector<long> &rEnd, vector<lon
 			++cComponentCount;
 	}
 
-	//²»»ØÌîÊ±£¬label´æ·ÅµÄ¾ÍÊÇ¸÷Á¬Í¨·ÖÖ§µÄ±êºÅ
-	//»ØÌîµ½Í¼Ïñ£¬Ê¹Ã¿¸öÏñËØµÃµ½Æä±êºÅÖµ
+	//ä¸å›å¡«æ—¶ï¼Œlabelå­˜æ”¾çš„å°±æ˜¯å„è¿é€šåˆ†æ”¯çš„æ ‡å·
+	//å›å¡«åˆ°å›¾åƒï¼Œä½¿æ¯ä¸ªåƒç´ å¾—åˆ°å…¶æ ‡å·å€¼
 	long runCount = n;
 	if(backfill)
 	{
