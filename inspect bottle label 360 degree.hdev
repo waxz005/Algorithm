@@ -1,0 +1,234 @@
+* This HDevelop example program shows how to create one single
+* mosaic image that shows the unrolled label of a bottle.
+* For this, images from at least four cameras are required that
+* completely cover the part of the bottle where the label is placed.
+* In a first step, the position and orientation of the bottle is
+* estimated from its silhouette. Then, the images of the individual
+* cameras are rectified such that they show the bottle's surface
+* unrolled. Finally, the individual rectified images are stitched
+* together to provide a 360 degree mosaic image of the bottle, which
+* can be used to perform various inspection tasks.
+* 
+* Global variables used for visualization of intermediate results
+global def tuple DisplayIntermediateResults
+global def tuple WindowWidthLimit
+global def tuple WindowHeightLimit
+* 
+* Standard control parameters:
+* - Specify the final mosaic image.
+PixelSizeInMM := 0.2
+ColorMosaic := true
+HighImageQuality := true
+* - Specify the kind of background to control the cylinder pose extraction.
+BackgroundMayContainTexture := false
+* - Define if the region to be unrolled is defined interactively.
+InteractivelyDefineRegion := false
+* - Control whether the intermediate results are visualized only for the
+*   first image set or for all image sets (set to 'first' or 'all').
+DisplayIntermediateResultsFor := 'first'
+* 
+* Control parameters for fine tuning:
+* - Parameters for the fine tuning of the fine adjustment.
+PerformFineAdjustment := true
+FineAdjustmentMatchingWidth := 30
+FineAdjustmentMaxShift := 30
+BlendingSeam := 10
+* - Parameters for the fine tuning of the silhouette extraction.
+SilhouetteMeasureDistance := 10
+SilhouetteMeasureLength2 := 30
+SilhouetteMeasureSigma := 0.5
+SilhouetteMeasureThreshold := 5
+SilhouetteMaxTilt := rad(10)
+* 
+* Control the graphics output.
+WindowWidthLimit := 800
+WindowHeightLimit := 600
+dev_update_off ()
+* 
+* Ensure a correct value for the control of the display of intermediate results and
+* set initial state for displaying intermediate results
+if (DisplayIntermediateResultsFor != 'first' and DisplayIntermediateResultsFor != 'all')
+    * Wrong value for DisplayIntermediateResults (must be 'first' or 'all')
+    throw ('Wrong value of DisplayIntermediateResultsFor (must be first or all)')
+endif
+DisplayIntermediateResults := true
+* 
+* Set some search paths.
+PathCsm := 'inspect_bottle_camera_setup_model.csm'
+PathImg := 'bottle_label'
+* 
+* Read one image to determine the image size.
+list_image_files (PathImg, 'default', [], ImageFiles)
+RegExpression := '(freixenet|got2b|jever|wala)_0[1-2]_cam_[1-4].*'
+tuple_regexp_select (ImageFiles, RegExpression, ImageFiles)
+read_image (Image, ImageFiles[0])
+get_image_size (Image, Width, Height)
+* 
+dev_close_window ()
+dev_open_window_fit_image (Image, 0, 0, WindowWidthLimit, WindowHeightLimit, WindowHandle)
+set_display_font (WindowHandle, 16, 'mono', 'true', 'false')
+* 
+* Read in the calibration information.
+read_camera_setup_model (PathCsm, CameraSetupModel)
+* 
+* Ensure that the origin of the camera setup model lies in the
+* projection center of camera 0.
+get_camera_setup_param (CameraSetupModel, 0, 'pose', CamPose0)
+set_camera_setup_param (CameraSetupModel, 'general', 'coord_transf_pose', CamPose0)
+* 
+* Loop over all objects and select the suitable data.
+Objects := ['jever','freixenet','got2b','wala']
+for Obj := 0 to |Objects| - 1 by 1
+    * 
+    Object := Objects[Obj]
+    LabelMinCol := -1
+    LabelMaxCol := -1
+    * Select the object-specific radii and ROI.
+    if (Object == 'jever')
+        CylinderRadiusInMM := 30.04
+        LabelMinCol := 100
+        LabelMaxCol := 1250
+    elseif (Object == 'freixenet')
+        CylinderRadiusInMM := 31.3
+        LabelMinCol := 600
+        LabelMaxCol := 1150
+    elseif (Object == 'got2b')
+        CylinderRadiusInMM := 24.935
+        LabelMinCol := 375
+        LabelMaxCol := 1025
+    elseif (Object == 'wala')
+        CylinderRadiusInMM := 15.35
+        LabelMinCol := 660
+        LabelMaxCol := 1160
+    endif
+    * 
+    * Convert control parameters into meters.
+    PixelSize := 0.001 * PixelSizeInMM
+    CylinderRadius := 0.001 * CylinderRadiusInMM
+    * 
+    * Load the information about the amount of cameras and the amount of image sets.
+    PathExpression := Object + '_'
+    tuple_regexp_select (ImageFiles, PathExpression, ImageSelection)
+    LastTuple := split(ImageSelection[|ImageSelection| - 1],'/')
+    LastTupleParts := split(LastTuple,'_')
+    * 
+    NumSetsStr := LastTupleParts[|LastTupleParts| - 3]
+    NumCamsStr := split(LastTupleParts[|LastTupleParts| - 1],'.')[0]
+    * 
+    * Recursive procedure to remove the leading zeros. Otherwise, when casting a string
+    * with leading zeros into a number, the base will be octal.
+    remove_leading_zeros (chr(ords(NumSetsStr)), NumSets)
+    remove_leading_zeros (chr(ords(NumCamsStr)), NumCams)
+    * 
+    * Specify the left and right borders of the image part that should be
+    * used for mosaic creation interactivly.
+    if (InteractivelyDefineRegion)
+        read_image (FirstImage, ImageSelection[0])
+        SetLabelRegionInteractively := true
+        if (SetLabelRegionInteractively or round(min([LabelMinCol,LabelMaxCol])))
+            dev_resize_window_fit_image (FirstImage, 0, 0, WindowWidthLimit, WindowHeightLimit)
+            dev_display (FirstImage)
+            disp_message (WindowHandle, ['Define the part of the bottle to be unrolled.','Note that only the left and right border of','the rectangle is used.'], 'window', 12, 12, 'black', 'true')
+            if (min([LabelMinCol,LabelMaxCol]) < 0)
+                draw_rectangle1 (WindowHandle, Row1, LabelMinCol, Row2, LabelMaxCol)
+            else
+                draw_rectangle1_mod (WindowHandle, 100, LabelMinCol, Height - 101, LabelMaxCol, Row1, LabelMinCol, Row2, LabelMaxCol)
+            endif
+        endif
+        LabelMinCol := max([0,LabelMinCol])
+        LabelMaxCol := min([Width - 1,LabelMaxCol])
+    endif
+    BorderLeft := LabelMinCol
+    BorderRight := Width - 1 - LabelMaxCol
+    * 
+    * Prepare measures for silhouette extraction.
+    MeasureHandles := []
+    for Col := LabelMinCol to LabelMaxCol by SilhouetteMeasureDistance
+        gen_measure_rectangle2 (Height / 2, Col, rad(90), Height / 2, SilhouetteMeasureLength2, Width, Height, 'nearest_neighbor', MeasureHandle)
+        MeasureHandles := [MeasureHandles,MeasureHandle]
+    endfor
+    * 
+    * Create rectification maps for the elimination of the radial distortion
+    * and create a camera setup model for the rectified images.
+    prepare_distortion_removal (RectificationMaps, CameraSetupModel, CameraSetupModelZeroDist, NumCameras)
+    * 
+    * Determine an approximate pose of the cylinder
+    * assuming that it stands upright in the center of the cameras.
+    determine_approximate_cylinder_pose_in_center_of_cameras (CameraSetupModelZeroDist, NumCameras, PoseCylinderApprox, HomMat3DCylinderApprox)
+    * 
+    * Determine approximately the required size (height) of the 3D model
+    * of the cylinder such that it covers the area between the given borders.
+    determine_required_cylinder_model_extent (BorderLeft, BorderRight, Width, Height, CameraSetupModelZeroDist, NumCameras, HomMat3DCylinderApprox, PixelSize, MinZ, MaxZ)
+    * 
+    * Determine the minimal and maximal distances between the opposite silhouettes.
+    determine_min_max_silhouette_distance (CameraSetupModelZeroDist, NumCameras, PoseCylinderApprox, CylinderRadius, MinZ, MaxZ, Height, MinPairDist, MaxPairDist)
+    * 
+    * Create the 3D object model of the cylinder and get the 3D points.
+    gen_cylinder_model (PixelSize, CylinderRadius, MinZ, MaxZ, NumSlices, NumPointsPerSlice, MinZI, MaxZI, ActualPixelSize, CylinderPointsX, CylinderPointsY, CylinderPointsZ)
+    ActualPixelSizeInMM := 1000.0 * ActualPixelSize
+    * 
+    * Determine the size of the final mosaic image.
+    MosaicHeight := NumSlices
+    MosaicWidth := NumPointsPerSlice
+    * 
+    * Step through every set and select the suiting images.
+    for Set := 1 to NumSets by 1
+        * 
+        * Select and read images.
+        tuple_regexp_select (ImageSelection, '_' + Set$'02d' + '_cam', ImageSet)
+        * Validity check
+        if (|ImageSet| != NumCams)
+            throw ('Number of images found in set ' + Set$'02d' + ' is not equal the amount of cameras')
+        endif
+        read_image (Images, ImageSet)
+        * 
+        * Start time keeping.
+        count_seconds (Seconds1)
+        * 
+        * Determine if color output is possible.
+        if (ColorMosaic)
+            select_obj (Images, ObjectSelected, 1)
+            count_channels (ObjectSelected, Channels)
+            if (Channels == 1)
+                ColorMosaic := false
+            elseif (Channels != 3)
+                * Wrong number of channels: Must be 1 or 3
+                stop ()
+            endif
+        endif
+        * 
+        * Eliminate distortions from the images and reduce color images to single channel images.
+        eliminate_radial_distortions (Images, RectificationMaps, ImagesRectified, ImagesGrayRectified, NumCameras)
+        * 
+        * Determine the pose of the rotation axis in 3D and create an additional camera setup model
+        * with the origin on the rotation axis.
+        determine_rotation_axis_3d (ImagesRectified, ImagesGrayRectified, CylinderRadius, BackgroundMayContainTexture, MeasureHandles, Width, Height, CameraSetupModelZeroDist, NumCameras, MinPairDist, MaxPairDist, SilhouetteMeasureSigma, SilhouetteMeasureThreshold, SilhouetteMaxTilt, 0.1 * PixelSize, PoseCylinder, Quality, CameraSetupModelZeroDistInCylinderOrigin, RadiusEstimated)
+        * 
+        * Determine approximately, which areas of the cylinder are seen best from which camera.
+        determine_source_cameras_for_mosaic_parts (Regions, CameraSetupModelZeroDistInCylinderOrigin, NumCameras, CylinderPointsX, CylinderPointsY, CylinderPointsZ, NumPointsPerSlice, MinZI, MosaicWidth, MosaicHeight)
+        * 
+        * Stich the images together.
+        stitch_images (Regions, ImagesRectified, ImagesGrayRectified, FinalMosaic, WindowHandle, ColorMosaic, HighImageQuality, PerformFineAdjustment, FineAdjustmentMaxShift, FineAdjustmentMatchingWidth, BlendingSeam, CameraSetupModelZeroDistInCylinderOrigin, NumCameras, MosaicWidth, MosaicHeight, CylinderPointsX, CylinderPointsY, CylinderPointsZ, NumSlices, NumPointsPerSlice, CylinderRadius, LabelMinCol, LabelMaxCol)
+        * 
+        * Stop time keeping.
+        count_seconds (Seconds2)
+        TimeMS := (Seconds2 - Seconds1) * 1000.0
+        * 
+        * Show the final mosaic image.
+        dev_resize_window_fit_image (FinalMosaic, 0, 0, WindowWidthLimit, WindowHeightLimit)
+        dev_display (FinalMosaic)
+        Message := '360 degree mosaic'
+        if (not DisplayIntermediateResults)
+            Message[1] := 'Runtime: ' + TimeMS$'.0f' + 'ms'
+        endif
+        disp_message (WindowHandle, Message, 'window', 12, 12, 'black', 'true')
+        if (Obj < |Objects| - 1 or Set < NumSets)
+            disp_continue_message (WindowHandle, 'black', 'true')
+        endif
+        * 
+        if (DisplayIntermediateResultsFor == 'first')
+            DisplayIntermediateResults := false
+        endif
+        stop ()
+    endfor
+endfor
